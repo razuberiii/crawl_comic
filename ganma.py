@@ -15,9 +15,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import driver as dr
 
-find = "殺人鬼Yの訪問".encode('utf-8').decode('utf-8')
+find = "ウルフちゃんは澄ましたい".encode('utf-8').decode('utf-8')
 regex_for_ganma = re.compile(f"href.*?(?={find})")
-regex_first_comma = re.compile(r"(?<=\")/.*(?=\")")
+regex_first_comma = re.compile(r"(?<=\")/.*?(?=\")")
 pattern_search_url = r'/\d.jpg\?'
 
 headers = {
