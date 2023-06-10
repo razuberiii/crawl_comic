@@ -18,7 +18,7 @@ import driver as dr
 driver = dr.driver
 
 
-class Comic():
+class Comic:
     def __init__(self, name, episode):
         self.episode = episode
         self.find = name

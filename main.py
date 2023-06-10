@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import comic
 import ganma
+import ichijin
 
-type = "ganma"
+type = "ichijin"
 
 # 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
@@ -13,3 +14,7 @@ if __name__ == '__main__':
     elif type == "comic":
         comic = comic.Comic(input("漫画名字:"), input("第几话:"))
         comic.crawl()
+
+    elif type == "ichijin":
+        ichijin = ichijin.Ichijin("屑", "2")
+        ichijin.crawl()
