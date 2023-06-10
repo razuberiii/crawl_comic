@@ -18,8 +18,8 @@ class Ichijin:
         self.driver = dr.driver
         # 设置一个等待时间
         self.wait = WebDriverWait(self.driver, 20)
-        self.width = 638
-        self.height = 907
+        self.width = 1412
+        self.height = 2000
         self.driver.set_window_size(self.width, self.height)
         self.url = "https://ichijin-plus.com/"
         self.offset_is_set = False
@@ -56,9 +56,7 @@ class Ichijin:
                 if not os.path.exists(str(self.episode)):
                     os.makedirs(str(self.episode))
                 self.is_done()
-
                 self.driver.get_screenshot_as_file(f"{self.episode}/{i}.png")
-                time.sleep(0.3)
                 self.next_page()
             else:
                 self.driver.get_screenshot_as_file(f"{self.episode}/{i}.png")
@@ -74,11 +72,12 @@ class Ichijin:
 
     def next_page(self):
         self.actions.click().perform()
-        time.sleep(0.4)
+        time.sleep(0.5)
 
     def is_done(self):
         self.wait.until(ec.presence_of_element_located((By.TAG_NAME, "body")))
         self.wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        self.get_xhr()
         time.sleep(0.1)
 
     def get_total_page(self):
