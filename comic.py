@@ -111,6 +111,7 @@ class Comic:
     def next_page(self, actions):
         # 没什么好办法判断完成，睡1秒把
         # 必须等图片加载完，但是我不知道有什么办法判断图片是否加载完……，网络卡就多抓几次，或者时间调大点
+        # 倒是知道怎么判断完成了，ichijin里面实现了，这里这样也能用，就不改了
         time.sleep(1)
         actions.click().perform()
 
