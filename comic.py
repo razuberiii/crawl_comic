@@ -2,7 +2,7 @@
 """
 爬取comic_walker
 """
-import base64
+import json
 import os
 import re
 import sys
@@ -22,17 +22,18 @@ class Comic:
     def __init__(self, name, episode):
         self.episode = episode
         self.find = name
+        self.driver = dr.driver
         # 设置一个等待时间
         self.wait = WebDriverWait(driver, 20)
         self.regex_for_comic = re.compile(f"href.*?(?={self.find})")
-
-        self.JS1 = "return document.querySelector(\"div[data-index='1'] canvas\").toDataURL('image/png');"
-        self.JS0 = "return document.querySelector(\"div[data-index='0'] canvas\").toDataURL('image/png');"
-        self.JS2 = "return document.querySelector(\"div[data-index='2'] canvas\").toDataURL('image/png');"
+        self.width = 1412
+        self.height = 2000
+        self.driver.set_window_size(self.width, self.height)
 
         self.offset_is_set = False
 
-        driver.set_window_size(626, 1000)
+        self.actions = self.setup_offset()
+        self.retry_count = 0
 
     def load_source(self, episode):
         url = 'https://comic-walker.com/'
@@ -62,65 +63,55 @@ class Comic:
         self.click_enabled(0, book_list[int(episode) - 1])
 
     def get_source(self, episode):
-        count = 1
-        print(driver.current_url)
-        self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, r"canvas")))
-        time.sleep(5)
+        self.wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, "footer")))
         total_page = self.get_total_page()
-        actions = self.setup_offset()
+        self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, r"canvas")))
+        self.get_xhr()
         print(total_page)
         for i in range(1, total_page - 1):
-            if count == 0:
-                js = self.JS0
-                count = 2
-            elif count == 1:
-                js = self.JS1
-                count = 0
-            elif count == 2:
-                js = self.JS2
-                count = 1
+            if not i == total_page - 2:
+                self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, r"canvas")))
+                if not os.path.exists(str(self.episode)):
+                    os.makedirs(str(self.episode))
+                self.is_done()
+                self.driver.get_screenshot_as_file(f"{self.episode}/{i}.png")
+                self.next_page()
+            else:
+                self.driver.get_screenshot_as_file(f"{self.episode}/{i}.png")
+            print(f"第{i}张完成")
+        print("ok")
 
-            print(js, count)
+    def is_done(self):
+        self.wait.until(ec.presence_of_element_located((By.TAG_NAME, "body")))
+        self.wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        self.get_xhr()
+        time.sleep(0.1)
 
-            img_bytes = self.decode_base64(js, 0)
-            self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, r"body")))
-            self.next_page(actions)
-
-            self.download(episode, i, img_bytes)
-            print(f"第{episode}话: 图片{i}抓取完成")
-        print("抓完了")
-
-    def decode_base64(self, js, retry_times):
-        try:
-            mg_base64 = driver.execute_script(js).split(',')[1]
-            return base64.b64decode(mg_base64)
-        except:
-            if retry_times > 20:
-                print("失败了")
-                sys.exit()
-            time.sleep(1)
-            retry_times += 1
-            self.decode_base64(js, retry_times)
-
-    def download(self, episode, i, img_bytes):
-        if not os.path.exists(str(episode)):
-            os.makedirs(str(episode))
-        with open(fr"{episode}\{i}.png", 'wb') as f:
-            f.write(img_bytes)
-
-    def next_page(self, actions):
-        # 没什么好办法判断完成，睡1秒把
-        # 必须等图片加载完，但是我不知道有什么办法判断图片是否加载完……，网络卡就多抓几次，或者时间调大点
-        # 倒是知道怎么判断完成了，ichijin里面实现了，这里这样也能用，就不改了
-        time.sleep(1)
-        actions.click().perform()
+    def next_page(self):
+        self.actions.click().perform()
+        time.sleep(0.5)
 
     def setup_offset(self):
         if not self.offset_is_set:
-            actions = ActionChains(driver)
-            actions.move_by_offset(626 * 0.15, 500)
+            actions = ActionChains(self.driver)
+            actions.move_by_offset(self.width * 0.15, self.height * 0.5)
             self.offset_is_set = True
             return actions
+
+    def get_xhr(self):
+        # 获取所有的网络请求
+        while True:
+            logs = self.driver.get_log('performance')
+            events = [json.loads(log['message'])['message'] for log in logs]
+            network_events = [event['params'] for event in events if event['method'] == 'Network.requestWillBeSent']
+            if all('response' in event for event in network_events):
+                break
+
+            if self.retry_count < 20:
+                self.retry_count = self.retry_count + 1
+                time.sleep(0.5)
+                self.get_xhr()
+            break
 
     def get_total_page(self):
         return int(re.findall(r"\d / \d.*?(?=<)", driver.page_source)[0].split(r"/")[-1])
